@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "usd-web"
+version = "0.1.0"
+description = "Turn OpenUSD stages and heightmaps into compact greedy-meshed web tiles, plus a drop-in three.js viewer."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Daniel McCoy Stephenson" }]
+requires-python = ">=3.11"
+dependencies = [
+    # Pinned exactly, like the other USD projects of this family: ingestion is tested against it.
+    "usd-core==26.8",
+    "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+browser = ["playwright>=1.45"]
+
+[project.scripts]
+usd-web = "usd_web.cli:main"
+
+[project.urls]
+Repository = "https://github.com/Preponderous-Software/usd-web"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -m 'not browser'"
+markers = [
+    "browser: headless-browser smoke test (needs playwright + chromium; run with -m browser)",
+]

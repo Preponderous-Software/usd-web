@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>usd-web viewer</title>
+<link rel="icon" href="data:,">
+<meta name="description" content="Drop-in three.js viewer for usd-web tiles.">
+<style>
+:root {
+  --bg: #cfe3f2; --panel: rgba(255,255,255,0.92); --ink: #1d232b; --muted: #5b6672;
+  --line: rgba(0,0,0,0.12); --chip: #eef2f6;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161c; --panel: rgba(22,27,34,0.92); --ink: #e6edf3; --muted: #9aa6b2;
+    --line: rgba(255,255,255,0.12); --chip: #232a33;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161c; --panel: rgba(22,27,34,0.92); --ink: #e6edf3; --muted: #9aa6b2;
+  --line: rgba(255,255,255,0.12); --chip: #232a33;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+  font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
+#view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+#panel { position: fixed; top: 12px; left: 12px; width: 270px; max-height: calc(100% - 24px); overflow: auto;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.uw-title { font-size: 15px; margin: 0 0 2px; }
+.uw-sub, .uw-help { color: var(--muted); font-size: 12px; }
+.uw-help { margin-top: 10px; font-size: 11px; }
+.uw-h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 12px 0 6px; }
+.uw-row { display: flex; align-items: center; gap: 8px; margin: 3px 0; cursor: pointer; }
+.uw-entry { all: unset; cursor: pointer; display: flex; align-items: center; gap: 8px; width: 100%; padding: 4px; border-radius: 6px; }
+.uw-entry:hover, .uw-entry:focus-visible { background: var(--chip); }
+.uw-swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--line); flex: none; }
+.uw-num { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+#labels { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+.uw-label { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; display: flex; align-items: center; gap: 6px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 2px 7px; font-weight: 600; font-size: 12px; }
+#error { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 24px; text-align: center; }
+@media (max-width: 640px) {
+  #panel { left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; max-height: 42%; }
+}
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+<div id="labels"></div>
+<div id="panel"></div>
+<div id="error"></div>
+<script type="module">
+// three.js is pinned to an exact version here; the viewer module itself has no dependencies.
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+import { createViewer } from "./usd-web-viewer.js";
+
+const params = new URLSearchParams(location.search);
+// Only a relative path is accepted, so a link cannot point the page at another origin's data.
+const data = params.get("data") || "demo/";
+const baseUrl = /^[\w./-]+$/.test(data) && !data.startsWith("/") && !data.includes("..") ? data : "demo/";
+const poll = Number(params.get("poll") || 5);
+try {
+  const viewer = createViewer({
+    THREE,
+    canvas: document.getElementById("view"),
+    baseUrl,
+    pollMs: Number.isFinite(poll) && poll > 0 ? poll * 1000 : 0,
+    panel: document.getElementById("panel"),
+    labelsHost: document.getElementById("labels"),
+  });
+  window.usdWebViewer = viewer;
+  viewer.ready.catch(err => {
+    const box = document.getElementById("error");
+    box.textContent = "Could not load the tiles: " + err.message;
+    box.style.display = "flex";
+  });
+} catch (err) {
+  const box = document.getElementById("error");
+  box.textContent = "This viewer needs WebGL, which this browser has turned off or does not support.";
+  box.style.display = "flex";
+}
+</script>
+</body>
+</html>
