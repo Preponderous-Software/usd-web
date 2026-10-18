@@ -68,6 +68,8 @@ def collect_points(
         if len(pos) != len(idx):
             raise ValueError(f"{prim.GetPath()}: positions and protoIndices differ in length")
         targets = inst.GetPrototypesRel().GetTargets()
+        if not targets:
+            continue
         lut = np.full(len(targets), -1, dtype=np.int64)
         for i, target in enumerate(targets):
             proto = stage.GetPrimAtPath(target)
@@ -75,7 +77,7 @@ def collect_points(
                 continue
             lut[i] = palette.add(prototype_color(proto, time))
         valid = (idx >= 0) & (idx < len(targets))
-        pidx = np.where(valid, lut[np.clip(idx, 0, max(len(targets) - 1, 0))], -1)
+        pidx = np.where(valid, lut[np.clip(idx, 0, len(targets) - 1)], -1)
         keep = pidx >= 0
         if not keep.any():
             continue

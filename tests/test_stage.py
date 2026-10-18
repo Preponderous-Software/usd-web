@@ -97,3 +97,12 @@ def test_stage_from_file_and_tiles(tmp_path):
 def test_empty_stage_is_an_error():
     with pytest.raises(ValueError):
         surface_from_stage(Usd.Stage.CreateInMemory())
+
+
+def test_instancer_without_prototypes_is_skipped():
+    stage = make_stage("Y")
+    bare = UsdGeom.PointInstancer.Define(stage, "/World/Bare")
+    bare.CreatePositionsAttr(Vt.Vec3fArray([Gf.Vec3f(50, 0, 50)]))
+    bare.CreateProtoIndicesAttr(Vt.IntArray([0]))
+    surface, palette = surface_from_stage(stage)
+    assert as_dict(surface, palette) == EXPECTED
