@@ -6,6 +6,12 @@ binary tiles with a versioned `index.json`, and ships a dependency-free three.js
 that draws them — orbit/pan/zoom with touch, overlay layers with a legend and labels,
 billboard sprites, and live tile hot-swapping while the tiles are republished.
 
+![The usd-web viewer orbiting a 256x256-block Minecraft world exported to USD](docs/images/viewer-orbit.gif)
+
+*The bundled viewer (`viewer/index.html`) drawing 4 tiles / 73,520 quads that `usd-web tiles` built from a
+[Minecraft-USD-Exporter](https://github.com/Dans-Plugins/Minecraft-USD-Exporter) export of a 256x256-block
+area of a local test world, orbited by mouse drag in headless Chromium.*
+
 ```text
 stage.usdc ─┐                               ┌─ index.json      (versioned, written last)
             ├─ top surface ─ greedy mesh ───┤
@@ -18,6 +24,16 @@ It was generalised from two viewers in this project family — Roam's 3D spectat
 voxel-world map built on [Minecraft-USD-Exporter](https://github.com/Dans-Plugins/Minecraft-USD-Exporter)
 output — so the next project does not have to write a third one. Nothing in it is specific to
 a game: overlays are generic layers of cells with a label and a colour.
+
+| Desktop (1280x800) | Phone (390x844) |
+|---|---|
+| ![usd-web viewer on a desktop browser](docs/images/viewer-desktop.png) | <img src="docs/images/viewer-phone.png" alt="usd-web viewer on a phone-width browser" width="260"> |
+
+The tile set was built with
+`usd-web tiles world.usda -o site/tiles --tile-size 128 --exclude short_grass --exclude tall_grass`
+and served next to the two viewer files; [`docs/capture_readme.py`](docs/capture_readme.py) takes
+the screenshots and the orbit GIF from any served tile set (Playwright + Pillow, WebGL on
+SwiftShader).
 
 ## Install
 
