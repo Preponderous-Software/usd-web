@@ -15,6 +15,7 @@ viewer/
   usd-web-replay.js   replay player module (three.js passed in)
   replay.html         replay page: scrubber, play/pause, speed, stats, state hash
 examples/make_demo.py synthetic demo tile set
+docs/capture_readme.py, docs/capture_replay.py   README screenshots/GIFs (Playwright + Pillow)
 ```
 
 ## Coordinates
@@ -177,6 +178,7 @@ viewer.flyTo(x, y, z, distance); viewer.setLayerVisible("zones", false);
 viewer.setLabelsVisible(true); viewer.setSpritesVisible(true);
 viewer.heightAt(x, z); await viewer.poll(); viewer.render(); viewer.dispose();
 viewer.scene; viewer.camera; viewer.renderer;   // for page-specific additions (then render())
+viewer.state;   // {index, tiles, target, dist}: the loaded index, tile count and camera target/distance
 ```
 
 - **Geometry**: one `BufferGeometry` per tile (Float32 positions, Int8 normals, Uint8 colours,
@@ -232,18 +234,23 @@ widths (`/ 255 * widthMax`) if `vertexWidth`; then per field `u8 present` and, i
 on its own. `--every N` / `--max-samples N` thin the samples (always keeping the last); fields
 and stats are held across dropped samples.
 
-**Player.** `createReplayPlayer({THREE, canvas, baseUrl, controls?, autoplay?, speed?, loop?,
-interpolate?, start?, onTick?, keyboardTarget?, background?, fitPadding?, hook?})` returns
-`{ready, play, pause, seek(tick), seekSample(k), setSpeed, render, dispose, state}`. It maps the
+**Player.** The module exports `createReplayPlayer`, `decodeChunk(u8, doc)`, `floorIndex`, and
+the constants `REPLAY_FORMAT`, `REPLAY_VERSION`, `CHUNK_MAGIC` and `SPEEDS`.
+`createReplayPlayer({THREE, canvas, baseUrl, controls?, autoplay?, speed?, loop?,
+interpolate?, start?, onTick?, keyboardTarget?, background?, fitPadding?, reducedMotion?,
+preserveDrawingBuffer?, hook?})` returns `{ready, play, pause, seek(tick), seekSample(k),
+setSpeed, render, dispose, scene, camera, renderer, state}`; `state` is
+`{doc, playing, speed, sample, tick, hash}`. It maps the
 Z-up replay to three.js Y-up as `(x, z, -y)`, draws each set as one `InstancedMesh` (sphere or
 cube), each field as a plane with a nearest-filtered `DataTexture`, and scene points as static
 instances. Playback advances `playbackRate × speed` ticks per second; positions of ids present
 in both neighbouring samples are interpolated, fields and stats hold. Chunk 0 is loaded before
 `ready`; the rest stream in order, and playback waits at an unloaded chunk. `prefers-reduced-
-motion` turns autoplay off. `controls` gets a play/pause button, a range scrubber, a speed button
+motion` turns autoplay off (`reducedMotion: true|false` overrides the media query). `controls` gets a play/pause button, a range scrubber, a speed button
 and a tick readout (44 px targets; the page CSS puts the scrubber on its own row under 640 px).
 Space toggles play, arrow keys step a sample. The hook `window.__usdWebReplay` exposes
-`ready, samples, chunks, loaded, tick, hash, playing, frames, errors` for tests.
+`ready, samples, chunks, loaded, tick, sample, hash, playing, frames, errors` (plus `speed` once
+it has been changed) and `play(), pause(), seek(tick), render()` for tests.
 
 ## Tests
 
@@ -259,7 +266,6 @@ Space toggles play, arrow keys step a sample. The hook `window.__usdWebReplay` e
 - `tests/browser/test_viewer_smoke.py` (`-m browser`, CI): headless Chromium with SwiftShader
   loads the demo, checks tiles/labels/sprites/legend and that pixels were drawn, republishes one
   tile and waits for exactly that tile to be hot-swapped, with no console errors.
-
 - `test_replay.py`: replay round trip against usd-recorder's reader (ids, quantized positions,
   colours, widths, field samples and holds, stats, scene), stand-alone chunks, thinning, stale
   chunk removal, a non-replay refused, the CLI, and the JS chunk decoder under node.
