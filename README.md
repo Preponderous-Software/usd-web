@@ -145,7 +145,7 @@ Embedding the viewer in your own page:
 uv venv -p 3.12 && uv pip install -e ".[dev]"
 python -m pytest                     # unit tests (the JS decoder test needs node)
 uv pip install -e ".[browser]" && python -m playwright install chromium
-python -m pytest -m browser          # headless Chromium + SwiftShader smoke test
+python -m pytest -m browser          # viewer + replay smoke tests (headless Chromium + SwiftShader)
 ```
 
 ## License
