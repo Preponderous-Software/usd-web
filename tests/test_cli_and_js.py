@@ -44,7 +44,7 @@ def test_cli_reports_errors(tmp_path, capsys):
 
 def test_python_module_entry_point():
     r = subprocess.run([sys.executable, "-m", "usd_web", "--version"], capture_output=True, text=True)
-    assert r.returncode == 0 and "0.1.0" in r.stdout
+    assert r.returncode == 0 and "0.2.0" in r.stdout
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node is not installed")

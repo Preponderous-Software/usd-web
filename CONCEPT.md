@@ -27,13 +27,15 @@ worked, but every one re-learned the same lessons:
 2. **A viewer module.** One dependency-free ES module. The host page passes in its own pinned
    three.js; the module draws the tiles, overlay layers (tint + legend with fly-to + labels),
    billboard sprites, and polls `index.json` to hot-swap changed tiles.
-3. **A CLI** (`usd-web tiles | heightmap | inspect`).
+3. **A CLI** (`usd-web tiles | heightmap | replay | inspect`).
+4. **A replay player** for `usd-replay/1` simulation replays (`usd-web replay`, `viewer/usd-web-replay.js`).
 
 ## What it is not
 
 - **Not a general USD renderer.** It shows a heightfield-like top surface: overhangs, caves and
   interiors are dropped by design. Arbitrary meshes, materials and animation are out of scope
-  (use usdview, Blender, or a USD-to-glTF path for those).
+  (use usdview, Blender, or a USD-to-glTF path for those). The one kind of animation it plays is
+  a simulation replay in the narrow `usd-replay/1` layout (points, colour grids, static points).
 - **Not a tile server.** Output is static files; any static host (or `python -m http.server`)
   serves them.
 - **Not game-specific.** Overlays are "layers of cells with label + colour"; a consumer maps its

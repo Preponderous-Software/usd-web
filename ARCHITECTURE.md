@@ -7,10 +7,13 @@ src/usd_web/
   mesh.py      greedy mesher (+ a naive reference used by the tests)
   tile.py      UWT1 encode/decode, build_tiles (world-aligned tiling)
   publish.py   atomic publish, index.json schema + validation, pruning
-  cli.py       usd-web tiles | heightmap | inspect
+  replay.py    usd-replay/1 stage -> replay.json + UWR1 chunks (and a Python chunk decoder)
+  cli.py       usd-web tiles | heightmap | replay | inspect
 viewer/
   usd-web-viewer.js   dependency-free ES module (three.js passed in)
   index.html          demo / drop-in page (pins three@0.160.0)
+  usd-web-replay.js   replay player module (three.js passed in)
+  replay.html         replay page: scrubber, play/pause, speed, stats, state hash
 examples/make_demo.py synthetic demo tile set
 ```
 
@@ -200,6 +203,48 @@ only long-stable API (`BufferGeometry`, `MeshLambertMaterial`, `Fog`, `TextureLo
 `PlaneGeometry`); it sets `texture.colorSpace` when the three.js version has it. Bumping
 three.js is a one-line page change, verified by the browser smoke test.
 
+## Replays (`replay.py`, `viewer/usd-web-replay.js`)
+
+Input is a stage in usd-recorder's `usd-replay/1` contract (`docs/REPLAY.md` there): one Z-up
+layer, `/Replay.replay:stateHash` sampled at every sample tick, `Points` entity sets under
+`/Replay/Entities`, colour-grid `Mesh` fields under `/Replay/Fields`, static `Points` under
+`/Replay/Scene`, `replay:stat:*` doubles. `read_stage` reads exactly that and refuses anything
+whose `customLayerData.usdReplay.schema` is not `usd-replay/1` (run `usd-recorder replay
+validate` for the full rule check). usd-web does not depend on usd-recorder at run time; the
+tests use its writer to make fixtures.
+
+**Output.** `replay.json` (written last, atomically) and content-addressed chunks
+`r.<first sample>.<sha>.uwr`, gzip'd. A conversion removes chunks the new index does not name.
+
+`replay.json` (`format: "usd-web-replay"`, `version: 1`): `title`, `meta` (the replay's
+`usdReplay` dictionary), `playbackRate`, `samples`, `ticks[]`, `hashes[]`, `bounds`, `quant`
+(`min[3]`, `step[3]`, `idBytes`), `sets[]` (`id`, `label`, `shape`, `color` or null,
+`width` or null, `vertexColor`, `vertexWidth`, `widthMax`, `maxCount`), `fields[]` (`id`,
+`label`, `cols`, `rows`, `origin`, `cellSize`, `z`, `ticks` where the chunks carry a sample),
+`stats` (one value per kept sample, held), `scene[]` (static points inline), `chunks[]`
+(`file`, `first`, `count`, `bytes`, `raw`), optional `view`.
+
+**UWR1 chunk** (little-endian): `"UWR1"`, `u32 count`, `u32 first`, then per sample, per set:
+`u32 n`, `n` ids (`u16` or `u32` by `idBytes`; dense per set in first-seen order), `n × 3 u16`
+quantized positions (`min + q * step`), then `n × 3 u8` sRGB colours if `vertexColor` and `n u8`
+widths (`/ 255 * widthMax`) if `vertexWidth`; then per field `u8 present` and, if 1,
+`cols × rows × 3 u8` sRGB. Each chunk restates every field in its first sample, so it decodes
+on its own. `--every N` / `--max-samples N` thin the samples (always keeping the last); fields
+and stats are held across dropped samples.
+
+**Player.** `createReplayPlayer({THREE, canvas, baseUrl, controls?, autoplay?, speed?, loop?,
+interpolate?, start?, onTick?, keyboardTarget?, background?, fitPadding?, hook?})` returns
+`{ready, play, pause, seek(tick), seekSample(k), setSpeed, render, dispose, state}`. It maps the
+Z-up replay to three.js Y-up as `(x, z, -y)`, draws each set as one `InstancedMesh` (sphere or
+cube), each field as a plane with a nearest-filtered `DataTexture`, and scene points as static
+instances. Playback advances `playbackRate × speed` ticks per second; positions of ids present
+in both neighbouring samples are interpolated, fields and stats hold. Chunk 0 is loaded before
+`ready`; the rest stream in order, and playback waits at an unloaded chunk. `prefers-reduced-
+motion` turns autoplay off. `controls` gets a play/pause button, a range scrubber, a speed button
+and a tick readout (44 px targets; the page CSS puts the scrubber on its own row under 640 px).
+Space toggles play, arrow keys step a sample. The hook `window.__usdWebReplay` exposes
+`ready, samples, chunks, loaded, tick, hash, playing, frames, errors` for tests.
+
 ## Tests
 
 - `test_mesh.py`: greedy output equals the naive reference on random maps (with holes, several
@@ -214,6 +259,13 @@ three.js is a one-line page change, verified by the browser smoke test.
 - `tests/browser/test_viewer_smoke.py` (`-m browser`, CI): headless Chromium with SwiftShader
   loads the demo, checks tiles/labels/sprites/legend and that pixels were drawn, republishes one
   tile and waits for exactly that tile to be hot-swapped, with no console errors.
+
+- `test_replay.py`: replay round trip against usd-recorder's reader (ids, quantized positions,
+  colours, widths, field samples and holds, stats, scene), stand-alone chunks, thinning, stale
+  chunk removal, a non-replay refused, the CLI, and the JS chunk decoder under node.
+- `tests/browser/test_replay_smoke.py` (`-m browser`): the replay page plays, pauses, scrubs
+  (tick and state hash follow), steps with the arrow keys, cycles speed, draws pixels, and on a
+  phone viewport puts the scrubber on its own row with buttons at least 44 px tall.
 
 ## Open questions
 

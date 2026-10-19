@@ -35,14 +35,53 @@ and served next to the two viewer files; [`docs/capture_readme.py`](docs/capture
 the screenshots and the orbit GIF from any served tile set (Playwright + Pillow, WebGL on
 SwiftShader).
 
+## Replays
+
+`usd-web replay` turns a simulation replay in usd-recorder's
+[`usd-replay/1` contract](https://github.com/Preponderous-Software/usd-recorder/blob/main/docs/REPLAY.md)
+(entities as time-sampled `Points`, colour-grid fields, a state hash per sample) into a small
+static web replay, and `viewer/usd-web-replay.js` plays it: a timeline scrubber, play/pause,
+speed (0.25× to 8×), drag/pinch orbit, and the state hash of the tick on screen.
+
+![A replay of usd-recorder's grazers example playing in the bundled replay page](docs/images/replay.gif)
+
+| Desktop (1280x800) | Phone (390x844) |
+|---|---|
+| ![The replay player on a desktop browser](docs/images/replay-desktop.png) | <img src="docs/images/replay-phone.png" alt="The replay player on a phone-width browser: scrubber on its own row, large buttons" width="260"> |
+
+*usd-recorder's `examples/grazers_replay.py` (800 ticks, 201 samples, 2.6 MB `.usdc`) became a
+118 KB web replay. Captured with [`docs/capture_replay.py`](docs/capture_replay.py) in headless
+Chromium.*
+
+```bash
+usd-web replay run.usdc -o site/replay --max-samples 300   # replay.json + gzip'd chunks
+cp viewer/replay.html viewer/usd-web-replay.js site/
+python -m http.server -d site 8000      # open http://localhost:8000/replay.html?data=replay/
+```
+
+Positions are quantized to 16 bits over the replay's bounds and ids renumbered densely, so a
+replay of a thousand entities over a few hundred samples is typically a few hundred KB. Chunks
+are fetched in order and playback starts on the first one. Embedding the player:
+
+```html
+<canvas id="view"></canvas><div id="bar"></div>
+<script type="module">
+  import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+  import { createReplayPlayer } from "./usd-web-replay.js";
+  const player = createReplayPlayer({ THREE, canvas: document.getElementById("view"),
+                                      baseUrl: "replay/", controls: document.getElementById("bar") });
+  await player.ready;
+</script>
+```
+
 ## Install
 
 ```bash
-pip install "usd-web @ git+https://github.com/Preponderous-Software/usd-web@v0.1.0"
+pip install "usd-web @ git+https://github.com/Preponderous-Software/usd-web@v0.2.0"
 ```
 
-Python 3.11+, `usd-core` 26.8 and numpy. The viewer is two static files in [`viewer/`](viewer/);
-copy them next to your tiles.
+Python 3.11+, `usd-core` 26.8 and numpy. The viewer and the replay player are static files in
+[`viewer/`](viewer/); copy them next to your tiles or replay.
 
 ## Quick start
 

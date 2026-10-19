@@ -39,6 +39,14 @@ def build_parser() -> argparse.ArgumentParser:
     h.add_argument("npz")
     _common(h)
 
+    r = sub.add_parser("replay", help="convert a usd-replay/1 replay into a web replay (replay.json + chunks)")
+    r.add_argument("stage", help="replay to read (.usdc/.usda), see usd-recorder's docs/REPLAY.md")
+    r.add_argument("-o", "--out", required=True, metavar="DIR", help="output directory")
+    r.add_argument("--every", type=int, default=1, metavar="N", help="keep one sample in N (and the last)")
+    r.add_argument("--max-samples", type=int, default=None, metavar="N", help="thin samples until at most N remain")
+    r.add_argument("--chunk-kb", type=int, default=1024, metavar="KB", help="raw sample data per chunk (default 1024)")
+    r.add_argument("--title", default=None, help="title shown by the player (default: the replay's)")
+
     i = sub.add_parser("inspect", help="summarise an index.json, a tile directory, or a .uwt tile")
     i.add_argument("path")
     return parser
@@ -78,6 +86,17 @@ def cmd_heightmap(args) -> int:
     return _publish(args, surface, palette)
 
 
+def cmd_replay(args) -> int:
+    from .replay import build_replay
+
+    doc = build_replay(
+        args.stage, args.out, every=args.every, max_samples=args.max_samples, chunk_bytes=args.chunk_kb * 1024, title=args.title
+    )
+    size = sum(c["bytes"] for c in doc["chunks"])
+    print(f"wrote {doc['samples']} sample(s) in {len(doc['chunks'])} chunk(s), {size:,} bytes, to {args.out}")
+    return 0
+
+
 def cmd_inspect(args) -> int:
     path = Path(args.path)
     if path.is_dir():
@@ -114,7 +133,7 @@ def cmd_inspect(args) -> int:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        return {"tiles": cmd_tiles, "heightmap": cmd_heightmap, "inspect": cmd_inspect}[args.command](args)
+        return {"tiles": cmd_tiles, "heightmap": cmd_heightmap, "replay": cmd_replay, "inspect": cmd_inspect}[args.command](args)
     except (ValueError, OSError, KeyError) as exc:
         print(f"usd-web: error: {exc}", file=sys.stderr)
         return 2
