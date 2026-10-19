@@ -51,7 +51,13 @@ def main(url: str, out: Path, frames: int = 48, at: float = 0.2, width: int = 56
             seek(page, round(i * (n - 1) / (frames - 1)))
             img = Image.open(io.BytesIO(page.screenshot())).convert("RGB")
             shots.append(img.resize((width, round(width * img.height / img.width)), Image.LANCZOS))
-        pal = shots[len(shots) // 2].quantize(colors=200, method=Image.Quantize.FASTOCTREE)
+        # One palette for the whole GIF, from frames across the run (a run's colours change: a
+        # palette from one frame maps, say, summer greens onto winter greys).
+        picks = shots[:: max(1, len(shots) // 6)]
+        mosaic = Image.new("RGB", (shots[0].width, shots[0].height * len(picks)))
+        for i, shot in enumerate(picks):
+            mosaic.paste(shot, (0, i * shot.height))
+        pal = mosaic.quantize(colors=255, method=Image.Quantize.FASTOCTREE)
         q = [s.quantize(palette=pal, dither=Image.Dither.NONE) for s in shots]
         q[0].save(out / "replay.gif", save_all=True, append_images=q[1:], duration=120, loop=0, optimize=True)
         phone = open_page(browser, url, 390, 844, scale=2, mobile=True)
