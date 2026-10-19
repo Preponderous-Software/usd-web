@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>usd-web replay</title>
+<link rel="icon" href="data:,">
+<meta name="description" content="Plays a usd-replay/1 simulation replay converted by usd-web.">
+<style>
+:root {
+  --bg: #1b2026; --panel: rgba(255,255,255,0.94); --ink: #1d232b; --muted: #5b6672;
+  --line: rgba(0,0,0,0.12); --chip: #eef2f6; --accent: #2f6fde;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --panel: rgba(22,27,34,0.92); --ink: #e6edf3; --muted: #9aa6b2; --line: rgba(255,255,255,0.14);
+    --chip: #232a33; --accent: #6ea8ff;
+  }
+}
+:root[data-theme="dark"] {
+  --panel: rgba(22,27,34,0.92); --ink: #e6edf3; --muted: #9aa6b2; --line: rgba(255,255,255,0.14);
+  --chip: #232a33; --accent: #6ea8ff;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+  font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
+#view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: none; }
+#panel { position: fixed; top: 12px; left: 12px; width: 280px; max-height: calc(100% - 100px); overflow: auto;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+#panel h1 { font-size: 15px; margin: 0 0 2px; }
+.sub { color: var(--muted); font-size: 12px; }
+.hash { font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); word-break: break-all; }
+.grid { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin-top: 8px; }
+.grid dt { color: var(--muted); }
+.grid dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 8px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--line); }
+#bar { position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); }
+.uwr-controls { display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 12px; padding: 8px 10px; }
+.uwr-btn { min-width: 64px; min-height: 44px; border-radius: 8px; border: 1px solid var(--line); background: var(--chip);
+  color: var(--ink); font: 600 14px system-ui, sans-serif; cursor: pointer; }
+.uwr-btn:focus-visible, .uwr-range:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.uwr-range { flex: 1; min-width: 0; height: 44px; accent-color: var(--accent); }
+.uwr-tick { min-width: 150px; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+#error { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 24px; text-align: center; color: #e6edf3; }
+@media (max-width: 640px) {
+  #panel { left: 8px; right: 8px; top: calc(8px + env(safe-area-inset-top)); width: auto; max-height: 34%; padding: 10px 12px; }
+  .grid { grid-template-columns: repeat(2, auto 1fr); }
+  #bar { left: 8px; right: 8px; bottom: calc(8px + env(safe-area-inset-bottom)); }
+  .uwr-controls { flex-wrap: wrap; gap: 6px 8px; }
+  .uwr-range { order: -1; flex-basis: 100%; }
+  .uwr-tick { flex: 1; min-width: 0; }
+}
+</style>
+</head>
+<body>
+<canvas id="view" aria-label="Replay view: drag to orbit, pinch or wheel to zoom"></canvas>
+<div id="panel">
+  <h1 id="title">Replay</h1>
+  <div class="sub" id="sub"></div>
+  <dl class="grid" id="stats"></dl>
+  <div class="legend" id="legend"></div>
+  <div class="hash" id="hash" title="State hash at this tick: re-running the sim with this seed gives the same value."></div>
+</div>
+<div id="bar"></div>
+<div id="error"></div>
+<script type="module">
+// three.js is pinned to an exact version here; the player module itself has no dependencies.
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+import { createReplayPlayer } from "./usd-web-replay.js";
+
+const params = new URLSearchParams(location.search);
+// Only a relative path is accepted, so a link cannot point the page at another origin's data.
+const data = params.get("data") || "replay/";
+const baseUrl = /^[\w./-]+$/.test(data) && !data.startsWith("/") && !data.includes("..") ? data : "replay/";
+const $ = id => document.getElementById(id);
+const fmt = v => v === null || v === undefined ? "–" : Number.isInteger(v) ? v.toLocaleString() : v.toFixed(3);
+function showError(text) { $("error").textContent = text; $("error").style.display = "flex"; }
+try {
+  const player = createReplayPlayer({
+    THREE, canvas: $("view"), baseUrl, controls: $("bar"), keyboardTarget: document.body,
+    speed: Number(params.get("speed")) || 1,
+    autoplay: params.get("autoplay") !== "0",
+    onTick: ({ tick, hash, stats }) => {
+      $("hash").textContent = `tick ${tick.toLocaleString()} · state ${hash}`;
+      const dl = $("stats");
+      if (dl.childElementCount !== 2 * Object.keys(stats).length) {
+        dl.replaceChildren();
+        for (const name of Object.keys(stats)) {
+          const dt = document.createElement("dt"); dt.textContent = name;
+          const dd = document.createElement("dd"); dd.dataset.stat = name;
+          dl.append(dt, dd);
+        }
+      }
+      for (const dd of dl.querySelectorAll("dd")) dd.textContent = fmt(stats[dd.dataset.stat]);
+    },
+  });
+  window.usdWebReplay = player;
+  player.ready.then(doc => {
+    document.title = `${doc.title} · usd-web replay`;
+    $("title").textContent = doc.title;
+    const m = doc.meta || {};
+    $("sub").textContent = `${m.sim || "sim"} ${m.simVersion || ""} · seed ${m.seed ?? "?"} · ${doc.samples.toLocaleString()} samples`;
+    const legend = $("legend");
+    for (const s of doc.sets) {
+      const item = document.createElement("span"), sw = document.createElement("i");
+      sw.className = "sw"; sw.style.background = s.color || "linear-gradient(90deg,#e66,#6c6,#69e)";
+      item.append(sw, document.createTextNode(s.label));
+      legend.append(item);
+    }
+  }).catch(err => showError("Could not load the replay: " + err.message));
+} catch (err) {
+  showError("This player needs WebGL, which this browser has turned off or does not support.");
+}
+</script>
+</body>
+</html>
