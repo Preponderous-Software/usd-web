@@ -4,7 +4,7 @@ import os
 import numpy as np
 import pytest
 
-from usd_web import Palette, Surface, build_tiles, publish, read_index, validate_index
+from usd_web import Palette, Surface, atomic_write_bytes, build_tiles, publish, read_index, validate_index
 from usd_web.publish import INDEX_NAME
 from usd_web.tile import Tile
 
@@ -105,6 +105,27 @@ def test_crash_while_writing_index_keeps_previous_index(tmp_path, monkeypatch):
     with pytest.raises(OSError):
         publish(tmp_path, tiles_for(height=20), Palette(["#808080"]))
     assert (tmp_path / INDEX_NAME).read_bytes() == before
+
+
+def test_atomic_write_bytes_replaces_the_file(tmp_path):
+    path = tmp_path / "f.bin"
+    atomic_write_bytes(path, b"old")
+    atomic_write_bytes(path, b"new")
+    assert path.read_bytes() == b"new" and files(tmp_path) == ["f.bin"]
+    assert path.stat().st_mode & 0o777 == 0o644
+
+
+def test_atomic_write_bytes_failure_keeps_old_file_and_no_temp(tmp_path, monkeypatch):
+    path = tmp_path / "f.bin"
+    atomic_write_bytes(path, b"old")
+
+    def crash(src, dst):
+        raise OSError("power cut")
+
+    monkeypatch.setattr(os, "replace", crash)
+    with pytest.raises(OSError):
+        atomic_write_bytes(path, b"new")
+    assert path.read_bytes() == b"old" and files(tmp_path) == ["f.bin"]
 
 
 def test_palette_must_be_append_only(tmp_path):
