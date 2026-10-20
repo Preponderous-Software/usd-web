@@ -72,3 +72,24 @@ console.log(JSON.stringify({{x: t.x, z: t.z, width: t.width, depth: t.depth, qua
     assert (got["x"], got["z"], got["width"], got["depth"]) == (-64, 128, 64, 64)
     assert got["quads"] == q.tolist()
     assert got["verts"] == 9 * 12
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node is not installed")
+def test_js_format_constants_match_python(tmp_path, root):
+    from usd_web import INDEX_FORMAT, INDEX_VERSION, MAGIC
+    from usd_web.replay import CHUNK_MAGIC, REPLAY_FORMAT, REPLAY_VERSION
+
+    script = tmp_path / "constants.mjs"
+    viewer = (root / "viewer" / "usd-web-viewer.js").as_uri()
+    replay = (root / "viewer" / "usd-web-replay.js").as_uri()
+    script.write_text(
+        f"""import * as v from "{viewer}";
+import * as r from "{replay}";
+console.log(JSON.stringify({{index: [v.INDEX_FORMAT, v.INDEX_VERSION, v.TILE_MAGIC],
+  replay: [r.REPLAY_FORMAT, r.REPLAY_VERSION, r.CHUNK_MAGIC]}}));
+"""
+    )
+    r = subprocess.run(["node", str(script)], capture_output=True, text=True, check=True)
+    got = json.loads(r.stdout)
+    assert got["index"] == [INDEX_FORMAT, INDEX_VERSION, MAGIC.decode("ascii")]
+    assert got["replay"] == [REPLAY_FORMAT, REPLAY_VERSION, CHUNK_MAGIC.decode("ascii")]

@@ -261,8 +261,10 @@ it has been changed) and `play(), pause(), seek(tick), render()` for tests.
 - `test_stage.py`: Y-up and Z-up stages give the same surface; world transforms; class-inherited
   colours; prototype filter; palette reuse.
 - `test_publish.py`: content addressing, determinism, incremental publish, index-last order,
-  crash mid-publish (tile or index), append-only palette, schema validation.
-- `test_cli_and_js.py`: the CLI; the JS decoder (run under node) reads Python-written tiles.
+  crash mid-publish (tile or index), `atomic_write_bytes` (replace, crash leaves no temp file),
+  append-only palette, schema validation.
+- `test_cli_and_js.py`: the CLI; the JS decoder (run under node) reads Python-written tiles;
+  the viewer's and replay player's format constants equal the Python ones.
 - `tests/browser/test_viewer_smoke.py` (`-m browser`, CI): headless Chromium with SwiftShader
   loads the demo, checks tiles/labels/sprites/legend and that pixels were drawn, republishes one
   tile and waits for exactly that tile to be hot-swapped, with no console errors.
