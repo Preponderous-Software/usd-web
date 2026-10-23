@@ -6,7 +6,7 @@ import sys
 import numpy as np
 import pytest
 
-from usd_web import Tile, read_index
+from usd_web import Tile, __version__, read_index
 from usd_web.cli import main
 
 
@@ -44,7 +44,7 @@ def test_cli_reports_errors(tmp_path, capsys):
 
 def test_python_module_entry_point():
     r = subprocess.run([sys.executable, "-m", "usd_web", "--version"], capture_output=True, text=True)
-    assert r.returncode == 0 and "0.2.0" in r.stdout
+    assert r.returncode == 0 and r.stdout.strip() == f"usd-web {__version__}"
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node is not installed")
