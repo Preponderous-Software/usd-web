@@ -42,6 +42,38 @@ def test_cli_reports_errors(tmp_path, capsys):
     assert "error" in capsys.readouterr().err
 
 
+def test_inspect_reads_the_named_json_and_reports_bad_paths(tmp_path, capsys):
+    npz = tmp_path / "map.npz"
+    h = np.arange(16 * 16).reshape(16, 16) % 5
+    np.savez(npz, heights=h, colors=(h > 2).astype(int), palette=np.array(["#00aa00", "#888888"]))
+    out = tmp_path / "tiles"
+    assert main(["heightmap", str(npz), "-o", str(out)]) == 0
+    doc = read_index(out)
+    doc["revision"] = 99
+    (out / "copy.json").write_text(json.dumps(doc))
+    capsys.readouterr()
+    assert main(["inspect", str(out / "copy.json")]) == 0
+    assert json.loads(capsys.readouterr().out)["revision"] == 99
+
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    (empty / "replay.json").write_text(json.dumps({"format": "usd-web-replay", "version": 1}))
+    assert main(["inspect", str(empty)]) == 2
+    assert "usd-web: error:" in capsys.readouterr().err
+    assert main(["inspect", str(empty / "replay.json")]) == 2
+    assert "invalid index: format" in capsys.readouterr().err
+
+
+def test_every_argument_has_help():
+    from usd_web.cli import build_parser
+
+    parser = build_parser()
+    commands = next(a for a in parser._actions if a.dest == "command").choices
+    for name, sub in commands.items():
+        for action in sub._actions:
+            assert action.help, f"usd-web {name}: {action.dest} has no help"
+
+
 def test_python_module_entry_point():
     r = subprocess.run([sys.executable, "-m", "usd_web", "--version"], capture_output=True, text=True)
     assert r.returncode == 0 and r.stdout.strip() == f"usd-web {__version__}"

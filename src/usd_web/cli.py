@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 
 from . import __version__
-from .publish import INDEX_NAME, publish, read_index
+from .publish import INDEX_NAME, publish, read_index, validate_index
 from .surface import Palette, Surface
 from .tile import Tile, build_tiles
 
@@ -36,7 +36,7 @@ def build_parser() -> argparse.ArgumentParser:
     t.add_argument("--cell-size", type=float, default=1.0, help="stage units per cell (default 1)")
 
     h = sub.add_parser("heightmap", help="tile a heightmap .npz (heights, colors, palette[, subsurface, origin])")
-    h.add_argument("npz")
+    h.add_argument("npz", help="heightmap archive to read (.npz)")
     _common(h)
 
     r = sub.add_parser("replay", help="convert a usd-replay/1 replay into a web replay (replay.json + chunks)")
@@ -48,7 +48,7 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--title", default=None, help="title shown by the player (default: the replay's)")
 
     i = sub.add_parser("inspect", help="summarise an index.json, a tile directory, or a .uwt tile")
-    i.add_argument("path")
+    i.add_argument("path", help="tile directory, index.json, or .uwt tile")
     return parser
 
 
@@ -102,8 +102,8 @@ def cmd_inspect(args) -> int:
     if path.is_dir():
         path = path / INDEX_NAME
     if path.name.endswith(".json"):
-        doc = read_index(path.parent)
-        assert doc is not None
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        validate_index(doc)
         summary = {
             "format": doc["format"],
             "version": doc["version"],
