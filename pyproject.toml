@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "usd-web"
-version = "0.2.2"
+version = "0.2.3.dev0"
 description = "Turn OpenUSD stages and heightmaps into compact greedy-meshed web tiles, plus a drop-in three.js viewer."
 readme = "README.md"
 license = "MIT"
