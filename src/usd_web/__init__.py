@@ -5,7 +5,7 @@ from .publish import INDEX_FORMAT, INDEX_VERSION, atomic_write_bytes, publish, r
 from .surface import HOLE, Palette, Surface
 from .tile import MAGIC, Tile, build_tiles, tile_version
 
-__version__ = "0.2.2.dev0"
+__version__ = "0.2.2"
 
 __all__ = [
     "HOLE",
