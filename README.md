@@ -77,7 +77,7 @@ are fetched in order and playback starts on the first one. Embedding the player:
 ## Install
 
 ```bash
-pip install "usd-web @ git+https://github.com/Preponderous-Software/usd-web@v0.2.0"
+pip install "usd-web @ git+https://github.com/Preponderous-Software/usd-web@v0.2.2"
 ```
 
 Python 3.11+, `usd-core` 26.8 and numpy. The viewer and the replay player are static files in
