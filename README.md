@@ -109,6 +109,14 @@ publish("site/tiles", tiles, palette, layers=[{
 }])
 ```
 
+Or from the command line, with the same arrays saved as a `.npz` (`heights` and `colors` as
+`[z, x]` arrays, `colors` indexing a `palette` array of `#rrggbb` strings; optional
+`subsurface` colours and an `origin` of `[x0, z0]`):
+
+```bash
+usd-web heightmap map.npz -o site/tiles --tile-size 128
+```
+
 Republishing only the tiles that changed is incremental and atomic: open viewers pick up the
 new tiles on their next poll. Try it with the demo:
 
@@ -130,6 +138,12 @@ Embedding the viewer in your own page:
 </script>
 ```
 
+The drop-in pages take query parameters: `index.html?data=tiles/&poll=5` (tile directory,
+default `demo/`; poll interval in seconds, default 5, `0` turns polling off) and
+`replay.html?data=replay/&speed=2&autoplay=0` (replay directory, default `replay/`; starting
+speed, default 1; `autoplay=0` starts paused, as does `prefers-reduced-motion`). `data` must be a relative path; anything else
+falls back to the default.
+
 `usd-web inspect <dir|index.json|tile.uwt>` prints a summary of a tile set or a tile.
 
 ## Documentation
@@ -143,7 +157,7 @@ Embedding the viewer in your own page:
 
 ```bash
 uv venv -p 3.12 && uv pip install -e ".[dev]"
-python -m pytest                     # unit tests (the JS decoder test needs node)
+python -m pytest                     # unit tests (the JS decoder tests need node)
 uv pip install -e ".[browser]" && python -m playwright install chromium
 python -m pytest -m browser          # viewer + replay smoke tests (headless Chromium + SwiftShader)
 ```
