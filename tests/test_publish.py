@@ -157,6 +157,17 @@ def test_sections_are_validated_and_carried(tmp_path):
         lambda d: d.update(palette=["red"]),
         lambda d: d["tiles"]["t.0.0"].update(file="../x"),
         lambda d: d["tiles"]["t.0.0"].pop("version"),
+        # malformed nested shapes must be ValueError too, never AttributeError/TypeError
+        lambda d: d.update(palette=[5]),
+        lambda d: d.update(layers=5),
+        lambda d: d.update(layers=[{"id": "r", "kind": "cells", "cellSize": 16, "entries": {"a": 1}}]),
+        lambda d: d.update(layers=[{"id": "r", "kind": "cells", "cellSize": 16, "entries": ["x"]}]),
+        lambda d: d.update(labels={"text": "x"}),
+        lambda d: d.update(labels=[1]),
+        lambda d: d.update(sprites=[]),
+        lambda d: d.update(sprites={"images": {}, "items": {"image": "x"}}),
+        lambda d: d.update(sprites={"images": {}, "items": [1]}),
+        lambda d: d.update(sprites={"images": {}, "items": [{"image": [1], "position": [0, 0, 0]}]}),
     ],
 )
 def test_validate_index_rejects(tmp_path, mutate):

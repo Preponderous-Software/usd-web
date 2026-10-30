@@ -59,9 +59,11 @@ def read_index(out_dir: str | Path) -> dict[str, Any] | None:
 
 
 def _is_color(value: Any) -> bool:
+    if not isinstance(value, str):
+        return False
     try:
         Palette.normalize(value)
-        return isinstance(value, str)
+        return True
     except ValueError:
         return False
 
@@ -100,12 +102,17 @@ def validate_index(doc: Any) -> None:
         for key in ("x", "z", "width", "depth", "quads"):
             need(isinstance(meta.get(key), int), f"tile {name}: {key} must be an integer")
         need("/" not in meta["file"] and "\\" not in meta["file"] and not meta["file"].startswith("."), f"tile {name}: bad file name")
-    for layer in doc.get("layers", []):
+    layers = doc.get("layers", [])
+    need(isinstance(layers, list), "layers must be a list")
+    for layer in layers:
         need(isinstance(layer, dict), "layer must be an object")
         need(isinstance(layer.get("id"), str) and layer["id"], "layer id must be a non-empty string")
         need(layer.get("kind") in LAYER_KINDS, f"layer {layer.get('id')}: kind must be one of {LAYER_KINDS}")
         need(isinstance(layer.get("cellSize"), int) and layer["cellSize"] > 0, "layer cellSize must be a positive integer")
-        for entry in layer.get("entries", []):
+        entries = layer.get("entries", [])
+        need(isinstance(entries, list), f"layer {layer['id']}: entries must be a list")
+        for entry in entries:
+            need(isinstance(entry, dict), f"layer {layer['id']}: entry must be an object")
             need(isinstance(entry.get("label"), str), "layer entry label must be a string")
             need(_is_color(entry.get("color")), "layer entry color must be '#rrggbb'")
             cells = entry.get("cells")
@@ -113,15 +120,23 @@ def validate_index(doc: Any) -> None:
                 isinstance(cells, list) and all(isinstance(c, list) and len(c) == 2 and all(isinstance(v, int) for v in c) for c in cells),
                 "layer entry cells must be [[cx, cz], ...]",
             )
-    for label in doc.get("labels", []):
+    labels = doc.get("labels", [])
+    need(isinstance(labels, list), "labels must be a list")
+    for label in labels:
+        need(isinstance(label, dict), "label must be an object")
         need(isinstance(label.get("text"), str), "label text must be a string")
         need(_xyz(label.get("position")), "label position must be [x, y|null, z]")
     sprites = doc.get("sprites")
     if sprites is not None:
+        need(isinstance(sprites, dict), "sprites must be an object")
         images = sprites.get("images", {})
         need(isinstance(images, dict) and all(isinstance(v, str) for v in images.values()), "sprites.images must map names to URLs")
-        for item in sprites.get("items", []):
-            need(item.get("image") in images, f"sprite image {item.get('image')!r} is not in sprites.images")
+        items = sprites.get("items", [])
+        need(isinstance(items, list), "sprites.items must be a list")
+        for item in items:
+            need(isinstance(item, dict), "sprite item must be an object")
+            image = item.get("image")
+            need(isinstance(image, str) and image in images, f"sprite image {image!r} is not in sprites.images")
             need(_xyz(item.get("position")), "sprite position must be [x, y|null, z]")
 
 
