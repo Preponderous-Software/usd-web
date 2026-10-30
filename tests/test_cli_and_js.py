@@ -63,6 +63,11 @@ def test_inspect_reads_the_named_json_and_reports_bad_paths(tmp_path, capsys):
     assert main(["inspect", str(empty / "replay.json")]) == 2
     assert "invalid index: format" in capsys.readouterr().err
 
+    doc["labels"] = [1]
+    (out / "bad-labels.json").write_text(json.dumps(doc))
+    assert main(["inspect", str(out / "bad-labels.json")]) == 2
+    assert "invalid index: label must be an object" in capsys.readouterr().err
+
 
 def test_every_argument_has_help():
     from usd_web.cli import build_parser
