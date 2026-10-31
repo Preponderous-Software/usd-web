@@ -268,7 +268,9 @@ it has been changed) and `play(), pause(), seek(tick), render()` for tests.
   the viewer's and replay player's format constants equal the Python ones.
 - `tests/browser/test_viewer_smoke.py` (`-m browser`, CI): headless Chromium with SwiftShader
   loads the demo, checks tiles/labels/sprites/legend and that pixels were drawn, republishes one
-  tile and waits for exactly that tile to be hot-swapped, with no console errors.
+  tile and waits for exactly that tile to be hot-swapped, then drives the returned viewer
+  (`heightAt` on the swapped tile, legend and `flyTo` camera targets, `setLayerVisible`,
+  `setLabelsVisible`, `setSpritesVisible`, `dispose`), with no console errors.
 - `test_replay.py`: replay round trip against usd-recorder's reader (ids, quantized positions,
   colours, widths, field samples and holds, stats, scene), stand-alone chunks, thinning, stale
   chunk removal, a non-replay refused, the CLI, and the JS chunk decoder under node.
