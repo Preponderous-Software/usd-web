@@ -325,25 +325,30 @@ export function createViewer(options) {
     }
   }
 
+  const panelBoxes = new Map(); // "layer:<id>" | "labels" | "sprites" -> checkbox
+  function syncBox(key, on) { const box = panelBoxes.get(key); if (box) box.checked = on; }
+
   function buildPanel() {
     const panel = options.panel;
     if (!panel) return;
     panel.replaceChildren();
+    panelBoxes.clear();
     const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
     panel.append(el("h1", "uw-title", index.title || "usd-web"));
     const q = Object.values(index.tiles).reduce((a, m) => a + m.quads, 0);
     panel.append(el("div", "uw-sub", `${Object.keys(index.tiles).length} tiles · ${q.toLocaleString()} quads · revision ${index.revision}`));
-    const toggle = (label, checked, onchange) => {
+    const toggle = (key, label, checked, onchange) => {
       const row = el("label", "uw-row"), box = el("input");
       box.type = "checkbox"; box.checked = checked; box.onchange = () => onchange(box.checked);
+      panelBoxes.set(key, box);
       row.append(box, el("span", null, label));
       return row;
     };
     const hasLabels = (index.labels || []).length || (index.layers || []).some(l => l.labels);
     if ((index.layers || []).length || hasLabels || index.sprites) panel.append(el("h2", "uw-h2", "Layers"));
-    for (const layer of index.layers || []) panel.append(toggle(layer.label || layer.id, !!layerVisible.get(layer.id), on => setLayerVisible(layer.id, on)));
-    if (hasLabels) panel.append(toggle("Labels", labelsVisible, setLabelsVisible));
-    if (index.sprites) panel.append(toggle("Sprites", spritesVisible, setSpritesVisible));
+    for (const layer of index.layers || []) panel.append(toggle("layer:" + layer.id, layer.label || layer.id, !!layerVisible.get(layer.id), on => setLayerVisible(layer.id, on)));
+    if (hasLabels) panel.append(toggle("labels", "Labels", labelsVisible, setLabelsVisible));
+    if (index.sprites) panel.append(toggle("sprites", "Sprites", spritesVisible, setSpritesVisible));
     for (const layer of index.layers || []) {
       if (!(layer.entries || []).length) continue;
       panel.append(el("h2", "uw-h2", layer.label || layer.id));
@@ -360,9 +365,9 @@ export function createViewer(options) {
     panel.append(el("div", "uw-help", "Drag to orbit, right-drag or shift-drag to pan (two fingers on touch), wheel or pinch to zoom."));
   }
 
-  function setLayerVisible(id, on) { layerVisible.set(id, !!on); for (const t of tiles.values()) applyColors(t); buildLabels(); }
-  function setLabelsVisible(on) { labelsVisible = !!on; needsRender = true; }
-  function setSpritesVisible(on) { spritesVisible = !!on; spriteGroup.visible = spritesVisible; needsRender = true; }
+  function setLayerVisible(id, on) { layerVisible.set(id, !!on); syncBox("layer:" + id, !!on); for (const t of tiles.values()) applyColors(t); buildLabels(); }
+  function setLabelsVisible(on) { labelsVisible = !!on; syncBox("labels", labelsVisible); needsRender = true; }
+  function setSpritesVisible(on) { spritesVisible = !!on; syncBox("sprites", spritesVisible); spriteGroup.visible = spritesVisible; needsRender = true; }
 
   // ---- camera ----
   const ctl = { target: new THREE.Vector3(), dist: 300, theta: 0.8, phi: 0.9 };
