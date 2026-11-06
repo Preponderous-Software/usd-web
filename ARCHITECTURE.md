@@ -270,7 +270,8 @@ it has been changed) and `play(), pause(), seek(tick), render()` for tests.
   loads the demo, checks tiles/labels/sprites/legend and that pixels were drawn, republishes one
   tile and waits for exactly that tile to be hot-swapped, then drives the returned viewer
   (`heightAt` on the swapped tile, legend and `flyTo` camera targets, `setLayerVisible`,
-  `setLabelsVisible`, `setSpritesVisible`, `dispose`), with no console errors.
+  `setLabelsVisible`, `setSpritesVisible` and the panel checkboxes they keep in sync, `dispose`),
+  with no console errors.
 - `test_replay.py`: replay round trip against usd-recorder's reader (ids, quantized positions,
   colours, widths, field samples and holds, stats, scene), stand-alone chunks, thinning, stale
   chunk removal, a non-replay refused, the CLI, and the JS chunk decoder under node.

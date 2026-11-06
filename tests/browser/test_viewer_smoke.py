@@ -112,6 +112,20 @@ def test_viewer_loads_and_hot_swaps(site):
         page.evaluate("window.usdWebViewer.setLayerVisible('regions', true)")
         page.wait_for_function("window.__usdWeb.labels === 3", timeout=10_000)
 
+        # Each setter moves its panel checkbox, so one click on the box takes effect.
+        box = lambda name: page.locator("#panel .uw-row", has_text=name).locator("input")
+        assert box("Regions").is_checked()
+        page.evaluate("window.usdWebViewer.setLayerVisible('regions', false)")
+        assert not box("Regions").is_checked()
+        box("Regions").click()
+        page.wait_for_function("window.__usdWeb.labels === 3", timeout=10_000)
+        for name, setter in [("Labels", "setLabelsVisible"), ("Sprites", "setSpritesVisible")]:
+            assert box(name).is_checked()
+            page.evaluate(f"window.usdWebViewer.{setter}(false)")
+            assert not box(name).is_checked()
+            page.evaluate(f"window.usdWebViewer.{setter}(true)")
+            assert box(name).is_checked()
+
         # setLabelsVisible hides every label on the next frame and shows them again.
         page.evaluate("window.usdWebViewer.flyTo(32, 8, 32, 102.4)")
         page.wait_for_function(TARGET_IS, arg=[32, 32, 102.4], timeout=10_000)
