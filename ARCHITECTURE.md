@@ -255,17 +255,23 @@ it has been changed) and `play(), pause(), seek(tick), render()` for tests.
 ## Tests
 
 - `test_mesh.py`: greedy output equals the naive reference on random maps (with holes, several
-  chunk sizes) with no overlaps; chunk boundaries; a step's walls; determinism.
+  chunk sizes) with no overlaps; a flat map merges to one top quad per chunk; chunk boundaries;
+  a step's walls; an empty map; determinism; input checks.
 - `test_tile.py`: encode/decode round-trip, header layout, deterministic gzip, range checks,
-  world-aligned tiling with negative origins, top-surface reduction, palette.
+  world-aligned tiling with negative origins, top-surface reduction, palette, heightmap masks
+  and float heights.
 - `test_stage.py`: Y-up and Z-up stages give the same surface; world transforms; class-inherited
-  colours; prototype filter; palette reuse.
+  colours and the grey fallback; prototype filter; palette reuse; a stage read from a file; an
+  empty stage is an error; an instancer with no prototypes is skipped.
 - `test_publish.py`: content addressing, determinism, incremental publish, index-last order,
   crash mid-publish (tile or index), `atomic_write_bytes` (replace, crash leaves no temp file),
-  append-only palette, schema validation (malformed shapes raise `ValueError`).
-- `test_cli_and_js.py`: the CLI (`inspect` reads exactly the named file and reports a bad path
-  or a malformed index as an error; every argument has help text); the JS decoder (run under node) reads Python-written tiles;
-  the viewer's and replay player's format constants equal the Python ones.
+  append-only palette, sections validated and carried over, schema validation (malformed
+  shapes raise `ValueError`).
+- `test_cli_and_js.py`: the CLI (`heightmap`, `tiles` with `--exclude`, errors exit 2,
+  `inspect` reads exactly the named file and reports a bad path or a malformed index as an
+  error, every argument has help text, `python -m usd_web --version`); the JS decoder (run
+  under node) reads Python-written tiles; the viewer's and replay player's format constants
+  equal the Python ones.
 - `tests/browser/test_viewer_smoke.py` (`-m browser`, CI): headless Chromium with SwiftShader
   loads the demo, checks tiles/labels/sprites/legend and that pixels were drawn, republishes one
   tile and waits for exactly that tile to be hot-swapped, then drives the returned viewer
