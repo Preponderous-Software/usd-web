@@ -22,8 +22,8 @@
 use usd-web where a static or slowly changing overview is wanted — e.g. a whole-world map
 published from a save, with rooms as tiles and points of interest as a `cells` layer. A Python
 exporter (Roam is Python) would write tiles with `build_tiles` + `publish`; the viewer needs no
-Roam code. Migrating the live spectator itself would first need textured tiles, which are outside
-usd-web v0.1.
+Roam code. Migrating the live spectator itself would first need textured tiles, which usd-web
+does not provide.
 
 ## A voxel-world map from Minecraft-USD-Exporter output
 
