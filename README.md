@@ -156,7 +156,8 @@ falls back to the default.
 ## Development
 
 ```bash
-uv venv -p 3.12 && uv pip install -e ".[dev]"
+uv venv -p 3.12 && uv pip install -e ".[dev]" && . .venv/bin/activate
+node --check viewer/usd-web-viewer.js   # CI's parse check of the viewer module
 python -m pytest                     # unit tests (the JS decoder tests need node)
 uv pip install -e ".[browser]" && python -m playwright install chromium
 python -m pytest -m browser          # viewer + replay smoke tests (headless Chromium + SwiftShader)
