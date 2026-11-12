@@ -260,6 +260,10 @@ it has been changed) and `play(), pause(), seek(tick), render()` for tests.
 - `test_tile.py`: encode/decode round-trip, header layout, deterministic gzip, range checks,
   world-aligned tiling with negative origins, top-surface reduction, palette, heightmap masks
   and float heights.
+- `test_surface.py`: `Palette` normalisation (clamped RGB triples, malformed strings), index
+  reuse, the 65535-colour cap and equality; `Surface` coercion and shape checks;
+  `from_heightmap` holes, default sub-surface and input checks; `from_points` origin from
+  negative coordinates, `cell_size`, order independence, boundary snapping and input checks.
 - `test_stage.py`: Y-up and Z-up stages give the same surface; world transforms; class-inherited
   colours and the grey fallback; prototype filter; palette reuse; a stage read from a file; an
   empty stage is an error; an instancer with no prototypes is skipped.
