@@ -271,8 +271,10 @@ it has been changed) and `play(), pause(), seek(tick), render()` for tests.
   crash mid-publish (tile or index), `atomic_write_bytes` (replace, crash leaves no temp file),
   append-only palette, sections validated and carried over, schema validation (malformed
   shapes raise `ValueError`).
-- `test_cli_and_js.py`: the CLI (`heightmap`, `tiles` with `--exclude`, errors exit 2,
-  `inspect` reads exactly the named file and reports a bad path or a malformed index as an
+- `test_cli_and_js.py`: the CLI (`heightmap`, its palette remapped onto the published one
+  unless `--replace`, its optional `subsurface` array, a missing array reported, `tiles` with
+  `--exclude`, errors exit 2, `inspect` reads exactly the named file, summarises a tile by
+  direction (raw, gzip or empty), and reports a bad path, a malformed index or a bad tile as an
   error, every argument has help text, `python -m usd_web --version`); the JS decoder (run
   under node) reads Python-written tiles; the viewer's and replay player's format constants
   equal the Python ones.
