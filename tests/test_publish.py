@@ -1,11 +1,12 @@
 import json
 import os
+import re
 
 import numpy as np
 import pytest
 
 from usd_web import Palette, Surface, atomic_write_bytes, build_tiles, publish, read_index, validate_index
-from usd_web.publish import INDEX_NAME
+from usd_web.publish import INDEX_NAME, prune
 from usd_web.tile import Tile
 
 
@@ -147,6 +148,89 @@ def test_sections_are_validated_and_carried(tmp_path):
         publish(tmp_path, {}, Palette(["#808080"]), sprites={"images": {}, "items": [{"image": "nope", "position": [0, 0, 0]}]})
     with pytest.raises(ValueError):
         publish(tmp_path, {}, Palette(["#808080"]), layers=[{"id": "r", "kind": "blobs", "cellSize": 16}])
+
+
+def test_read_index_returns_none_without_an_index(tmp_path):
+    assert read_index(tmp_path) is None
+
+
+def test_republishing_an_unchanged_tile_skips_its_write(tmp_path, monkeypatch):
+    publish(tmp_path, tiles_for(), Palette(["#808080"]))
+    order = []
+    real = os.replace
+
+    def spy(src, dst):
+        order.append(os.path.basename(dst))
+        return real(src, dst)
+
+    monkeypatch.setattr(os, "replace", spy)
+    doc = publish(tmp_path, tiles_for(), Palette(["#808080"]))
+    assert order == [INDEX_NAME]
+    assert doc["revision"] == 2
+
+
+def test_remove_drops_tiles_and_prunes_their_files_one_publish_later(tmp_path):
+    first = publish(tmp_path, tiles_for(), Palette(["#808080"]))
+    gone = first["tiles"]["t.0.0"]["file"]
+    second = publish(tmp_path, {}, Palette(["#808080"]), remove=("t.0.0",))
+    assert sorted(second["tiles"]) == ["t.0.1", "t.1.0", "t.1.1"]
+    assert gone in files(tmp_path)  # still named by the previous index
+    publish(tmp_path, {}, Palette(["#808080"]))
+    assert gone not in files(tmp_path)
+
+
+def test_replace_starts_over_and_drops_carried_sections(tmp_path):
+    publish(tmp_path, tiles_for(), Palette(["#808080"]), title="T", view={"distance": 5}, labels=[{"text": "x", "position": [0, None, 0]}])
+    doc = publish(tmp_path, {"t.0.0": tiles_for()["t.0.0"]}, Palette(["#808080"]), replace=True)
+    assert sorted(doc["tiles"]) == ["t.0.0"]
+    assert doc["revision"] == 2
+    for key in ("title", "view", "labels", "layers", "sprites"):
+        assert key not in doc
+
+
+def test_given_sections_override_carried_ones(tmp_path):
+    publish(tmp_path, tiles_for(), Palette(["#808080"]), title="Old", view={"distance": 5})
+    doc = publish(tmp_path, {}, Palette(["#808080"]), title="New")
+    assert doc["title"] == "New" and doc["view"] == {"distance": 5}
+
+
+def test_prune_deletes_only_unreferenced_tile_files(tmp_path):
+    for name in ("cur.uwt", "prev.uwt", "stale.uwt", "notes.txt"):
+        (tmp_path / name).write_bytes(b"x")
+    current = {"tiles": {"a": {"file": "cur.uwt"}}}
+    previous = {"tiles": {"a": {"file": "prev.uwt"}}}
+    assert prune(tmp_path, current, previous) == ["stale.uwt"]
+    assert files(tmp_path) == ["cur.uwt", "notes.txt", "prev.uwt"]
+    assert prune(tmp_path, current, None) == ["prev.uwt"]
+    assert files(tmp_path) == ["cur.uwt", "notes.txt"]
+
+
+def test_validate_index_ignores_unknown_fields(tmp_path):
+    doc = publish(tmp_path, tiles_for(), Palette(["#808080"]))
+    doc = json.loads(json.dumps(doc))
+    doc["futureField"] = {"anything": [1, 2]}
+    doc["tiles"]["t.0.0"]["futureTileField"] = "x"
+    validate_index(doc)
+
+
+@pytest.mark.parametrize(
+    ("mutate", "message"),
+    [
+        (lambda d: d.update(version=True), "version must be an integer"),
+        (lambda d: d.update(version=2), "version 2 is newer than supported"),
+        (lambda d: d.update(revision="1"), "revision must be an integer"),
+        (lambda d: d.update(tiles=[]), "tiles must be an object"),
+        (lambda d: d["tiles"]["t.0.0"].update(quads="4"), "tile t.0.0: quads must be an integer"),
+        (lambda d: d["tiles"]["t.0.0"].update(file=".hidden"), "tile t.0.0: bad file name"),
+        (lambda d: d.update(labels=[{"text": "x", "position": [None, 0, 0]}]), "label position must be"),
+    ],
+)
+def test_validate_index_messages_name_the_field(tmp_path, mutate, message):
+    doc = publish(tmp_path, tiles_for(), Palette(["#808080"]))
+    doc = json.loads(json.dumps(doc))
+    mutate(doc)
+    with pytest.raises(ValueError, match=re.escape(message)):
+        validate_index(doc)
 
 
 @pytest.mark.parametrize(

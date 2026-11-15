@@ -269,8 +269,10 @@ it has been changed) and `play(), pause(), seek(tick), render()` for tests.
   empty stage is an error; an instancer with no prototypes is skipped.
 - `test_publish.py`: content addressing, determinism, incremental publish, index-last order,
   crash mid-publish (tile or index), `atomic_write_bytes` (replace, crash leaves no temp file),
-  append-only palette, sections validated and carried over, schema validation (malformed
-  shapes raise `ValueError`).
+  append-only palette, sections validated and carried over (or overridden, or dropped by
+  `replace=True`), unchanged tiles not rewritten, `remove=`, `prune`, `read_index` with no
+  index, schema validation (malformed shapes raise `ValueError` whose message names the field;
+  unknown fields are ignored).
 - `test_cli_and_js.py`: the CLI (`heightmap`, its palette remapped onto the published one
   unless `--replace`, its optional `subsurface` array, a missing array reported, `tiles` with
   `--exclude`, errors exit 2, `inspect` reads exactly the named file, summarises a tile by
