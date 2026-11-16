@@ -265,8 +265,12 @@ it has been changed) and `play(), pause(), seek(tick), render()` for tests.
   `from_heightmap` holes, default sub-surface and input checks; `from_points` origin from
   negative coordinates, `cell_size`, order independence, boundary snapping and input checks.
 - `test_stage.py`: Y-up and Z-up stages give the same surface; world transforms; class-inherited
-  colours and the grey fallback; prototype filter; palette reuse; a stage read from a file; an
-  empty stage is an error; an instancer with no prototypes is skipped.
+  colours, a colour on a prototype's descendant, and the grey fallback; prototype filter
+  (filtering out every prototype is an error); palette reuse; several instancers sharing one
+  surface and palette; `cell_size` scaling (including the Z-up offset); time-sampled positions;
+  out-of-range `protoIndices` dropped; mismatched `positions`/`protoIndices` lengths and an
+  unopenable path are errors; a stage read from a file; an empty stage is an error; an
+  instancer with no prototypes is skipped.
 - `test_publish.py`: content addressing, determinism, incremental publish, index-last order,
   crash mid-publish (tile or index), `atomic_write_bytes` (replace, crash leaves no temp file),
   append-only palette, sections validated and carried over (or overridden, or dropped by
