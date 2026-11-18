@@ -257,9 +257,12 @@ it has been changed) and `play(), pause(), seek(tick), render()` for tests.
 - `test_mesh.py`: greedy output equals the naive reference on random maps (with holes, several
   chunk sizes) with no overlaps; a flat map merges to one top quad per chunk; chunk boundaries;
   a step's walls; an empty map; determinism; input checks.
-- `test_tile.py`: encode/decode round-trip, header layout, deterministic gzip, range checks,
-  world-aligned tiling with negative origins, top-surface reduction, palette, heightmap masks
-  and float heights.
+- `test_tile.py`: encode/decode round-trip, header layout, deterministic gzip, range checks
+  (tile size, `dir`, and each column named at its limits), decode errors (truncated header,
+  wrong magic, length mismatch), an empty tile, `Tile` coercion and equality, `y_range` for top
+  and side quads, `tile_name`/`tile_version`, world-aligned tiling with negative origins,
+  `build_tiles` size checks, all-hole tiles omitted and an inner surface's world offset,
+  top-surface reduction, palette, heightmap masks and float heights.
 - `test_surface.py`: `Palette` normalisation (clamped RGB triples, malformed strings), index
   reuse, the 65535-colour cap and equality; `Surface` coercion and shape checks;
   `from_heightmap` holes, default sub-surface and input checks; `from_points` origin from

@@ -6,6 +6,7 @@ import pytest
 
 from usd_web import MAGIC, Palette, Surface, Tile, build_tiles, tile_version
 from usd_web.surface import HOLE
+from usd_web.tile import tile_name
 
 
 def sample_tile(n=7):
@@ -101,3 +102,133 @@ def test_palette_is_append_only_and_normalised():
 def test_heightmap_mask_and_float_heights():
     s = Surface.from_heightmap(np.array([[1.4, 2.6]]), np.array([[0, 0]]), mask=np.array([[True, False]]))
     assert s.heights.tolist() == [[1, HOLE]]
+
+
+@pytest.mark.parametrize("width, depth", [(0, 16), (16, 0), (65536, 16), (16, 65536), (-1, 16)])
+def test_encode_rejects_bad_tile_size(width, depth):
+    with pytest.raises(ValueError, match="width and depth"):
+        Tile(0, 0, width, depth, np.zeros((0, 7))).encode()
+
+
+def test_encode_accepts_extreme_tile_size():
+    t = Tile(0, 0, 65535, 1, np.zeros((0, 7)))
+    assert Tile.decode(t.encode()) == t
+
+
+@pytest.mark.parametrize("bad", [-1, 5])
+def test_encode_rejects_bad_dir(bad):
+    t = sample_tile(3)
+    t.quads[1, 0] = bad
+    with pytest.raises(ValueError, match="dir must be 0..4"):
+        t.encode()
+
+
+@pytest.mark.parametrize(
+    "col, name, value",
+    [
+        (1, "x", -1),
+        (1, "x", 65536),
+        (2, "z", 65536),
+        (3, "y0", -32769),
+        (3, "y0", 32768),
+        (4, "du", -1),
+        (5, "dv", 65536),
+        (6, "color", 65536),
+    ],
+)
+def test_encode_names_the_out_of_range_column(col, name, value):
+    t = sample_tile(3)
+    t.quads[2, col] = value
+    with pytest.raises(ValueError, match=f"column '{name}' out of range"):
+        t.encode()
+
+
+def test_encode_accepts_column_limits():
+    q = np.array([[4, 65535, 0, -32768, 65535, 0, 65535], [0, 0, 65535, 32767, 0, 65535, 0]])
+    t = Tile(0, 0, 1, 1, q)
+    assert Tile.decode(t.encode()) == t
+
+
+def test_decode_rejects_truncated_header():
+    with pytest.raises(ValueError, match="truncated tile header"):
+        Tile.decode(b"UWT1" + b"\0" * 15)
+    with pytest.raises(ValueError, match="truncated tile header"):
+        Tile.decode(gzip.compress(b"UWT1"))
+
+
+def test_decode_names_the_wrong_magic():
+    raw = b"UWT2" + sample_tile(2).encode()[4:]
+    with pytest.raises(ValueError, match="not a UWT1 tile"):
+        Tile.decode(raw)
+
+
+def test_decode_rejects_trailing_bytes_and_reports_sizes():
+    raw = sample_tile(4).encode()
+    with pytest.raises(ValueError, match=f"tile is {len(raw) + 1} bytes, expected {len(raw)}"):
+        Tile.decode(raw + b"\0")
+    with pytest.raises(ValueError, match=f"tile is {len(raw) - 1} bytes, expected {len(raw)}"):
+        Tile.decode(gzip.compress(raw[:-1]))
+
+
+def test_decode_empty_tile_has_seven_columns():
+    t = Tile.decode(Tile(8, -8, 4, 4, np.zeros((0, 7))).to_bytes())
+    assert (t.x, t.z, t.width, t.depth) == (8, -8, 4, 4)
+    assert t.quads.shape == (0, 7) and t.quads.dtype == np.int64
+
+
+def test_tile_coerces_flat_quads_and_compares_by_value():
+    flat = [0, 1, 2, 3, 4, 5, 6, 1, 0, 0, -2, 1, 3, 7]
+    t = Tile(0, 0, 16, 16, flat)
+    assert t.quads.shape == (2, 7) and t.quads.dtype == np.int64
+    assert t == Tile(0, 0, 16, 16, np.array(flat).reshape(2, 7))
+    assert t != Tile(1, 0, 16, 16, flat)
+    assert t != Tile(0, 0, 16, 16, flat[:7])
+    assert t != "not a tile"
+
+
+def test_y_range_empty_and_top_vs_side_quads():
+    assert Tile(0, 0, 1, 1, np.zeros((0, 7))).y_range == (0, 0)
+    # A top quad's dv is a Z extent, so it does not raise the top; a side quad's dv is its height.
+    top = [0, 0, 0, 10, 1, 50, 0]
+    side = [1, 0, 0, -4, 1, 6, 0]
+    assert Tile(0, 0, 1, 1, [top]).y_range == (10, 10)
+    assert Tile(0, 0, 1, 1, [top, side]).y_range == (-4, 10)
+    assert Tile(0, 0, 1, 1, [[3, 0, 0, 7, 1, 9, 0], top]).y_range == (7, 16)
+
+
+def test_tile_name_and_version():
+    assert tile_name(-1, 0) == "t.-1.0"
+    assert tile_name(np.int64(3), 2.0) == "t.3.2"
+    assert tile_version(b"") == "e3b0c44298fc"  # SHA-256 of the empty string
+
+
+@pytest.mark.parametrize(
+    "tile_size, chunk_size, message",
+    [
+        (0, 16, "must be positive"),
+        (16, 0, "must be positive"),
+        (-16, 16, "must be positive"),
+        (65536, 16, "at most 65535"),
+    ],
+)
+def test_build_tiles_rejects_bad_sizes(tile_size, chunk_size, message):
+    s = Surface.from_heightmap(np.ones((2, 2)), np.zeros((2, 2), dtype=int))
+    with pytest.raises(ValueError, match=message):
+        build_tiles(s, tile_size=tile_size, chunk_size=chunk_size)
+
+
+def test_build_tiles_omits_all_hole_tiles():
+    h = np.full((8, 40), 2)
+    h[:, 16:32] = HOLE  # the middle 16-wide tile has no column
+    s = Surface.from_heightmap(h, np.zeros_like(h))
+    assert sorted(build_tiles(s, tile_size=16, chunk_size=16)) == ["t.0.0", "t.2.0"]
+
+
+def test_build_tiles_places_an_inner_surface_at_its_world_offset():
+    s = Surface.from_heightmap(np.full((1, 1), 5), np.zeros((1, 1), dtype=int), origin=(37, -3))
+    tiles = build_tiles(s, tile_size=32, chunk_size=16, skirt=0)
+    assert sorted(tiles) == ["t.1.-1"]
+    t = tiles["t.1.-1"]
+    assert (t.x, t.z, t.width, t.depth) == (32, -32, 32, 32)
+    tops = t.quads[t.quads[:, 0] == 0]
+    assert tops[:, 1:6].tolist() == [[5, 29, 5, 1, 1]]  # world (37, -3) is local (5, 29)
